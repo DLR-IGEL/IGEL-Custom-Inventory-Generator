@@ -1,19 +1,71 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "IGEL-custom-inventory-generator"
 version = "1.0.0"
-description = "Custom rocket emission inventory generator"
+description = "Generate configurable global rocket-launch emission inventories"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+  {name = "Moritz Herberhold"},
+]
+maintainers = [
+  {name = "Moritz Herberhold"},
+]
+keywords = [
+  "atmospheric emissions",
+  "emission inventory",
+  "netcdf",
+  "rocket launch",
+  "spaceflight",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
+dependencies = [
+  "cftime>=1.6,<2",
+  "netCDF4>=1.7,<2",
+  "numpy>=2.1,<3",
+  "pandas>=2.2,<3",
+  "PyYAML>=6,<7",
+  "scipy>=1.14,<2",
+  "tqdm>=4.67,<5",
+  "ussa1976==0.3.4",
+  "xarray>=2025.1,<2026",
+]
+
+[project.optional-dependencies]
+test = [
+  "build>=1.2,<2",
+  "pytest>=8.3,<9",
+]
 
 [project.scripts]
 IGEL_custom_inventory_generator = "IGEL_custom_inventory_generator.IGEL_custom_inventory_generator:main"
+
+[project.urls]
+Homepage = "https://github.com/DLR-IGEL/IGEL-Custom-Inventory-Generator"
+Documentation = "https://github.com/DLR-IGEL/IGEL-Custom-Inventory-Generator#readme"
+Issues = "https://github.com/DLR-IGEL/IGEL-Custom-Inventory-Generator/issues"
+Repository = "https://github.com/DLR-IGEL/IGEL-Custom-Inventory-Generator"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+pythonpath = ["src"]
+testpaths = ["tests"]

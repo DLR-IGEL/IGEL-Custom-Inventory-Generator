@@ -6,15 +6,15 @@ import numpy as np
 import pandas as pd
 import ussa1976
 
-from constants import (
+from .constants import (
     ALLOWED_INVENTORY_EMISSION_UNITS,
     ALLOWED_INVENTORY_VERTICAL_COORDINATES,
     AVOGADRO_CONSTANT,
     EARTH_RADIUS_M,
     SPECIES_MASS_COLUMN_PATTERN,
 )
-from errors import InventoryTransformError
-from inventory_timesteps import timestep_duration_seconds_from_key
+from .errors import InventoryTransformError
+from .inventory_timesteps import timestep_duration_seconds_from_key
 
 
 def degrees_to_radians(deg: float | np.ndarray | pd.Series) -> float | np.ndarray | pd.Series:
@@ -420,50 +420,6 @@ def collapse_spatial_bins_to_midpoints(
     result_df["ALTITUDE"] = (alt_min + alt_max) / 2.0
     result_df["LATITUDE"] = (lat_min + lat_max) / 2.0
     result_df["LONGITUDE"] = (lon_min + lon_max) / 2.0
-
-    return result_df
-
-    alt_min = pd.to_numeric(result_df["ALTITUDE_MIN"], errors="coerce")
-    alt_max = pd.to_numeric(result_df["ALTITUDE_MAX"], errors="coerce")
-    lat_min = pd.to_numeric(result_df["LATITUDE_MIN"], errors="coerce")
-    lat_max = pd.to_numeric(result_df["LATITUDE_MAX"], errors="coerce")
-    lon_min = pd.to_numeric(result_df["LONGITUDE_MIN"], errors="coerce")
-    lon_max = pd.to_numeric(result_df["LONGITUDE_MAX"], errors="coerce")
-
-    if (
-        alt_min.isna().any()
-        or alt_max.isna().any()
-        or lat_min.isna().any()
-        or lat_max.isna().any()
-        or lon_min.isna().any()
-        or lon_max.isna().any()
-    ):
-        raise InventoryTransformError("Spatial boundary columns contain non-numeric values.")
-
-    result_df["CELL_VOLUME_M3"] = calculate_shell_volume_m3(
-        lat_min_deg=lat_min,
-        lat_max_deg=lat_max,
-        lon_min_deg=lon_min,
-        lon_max_deg=lon_max,
-        alt_min_km=alt_min,
-        alt_max_km=alt_max,
-    )
-
-    result_df["ALTITUDE"] = (alt_min + alt_max) / 2.0
-    result_df["LATITUDE"] = (lat_min + lat_max) / 2.0
-    result_df["LONGITUDE"] = (lon_min + lon_max) / 2.0
-
-    result_df = result_df.drop(
-        columns=[
-            "ALTITUDE_MIN",
-            "ALTITUDE_MAX",
-            "LATITUDE_MIN",
-            "LATITUDE_MAX",
-            "LONGITUDE_MIN",
-            "LONGITUDE_MAX",
-        ],
-        errors="ignore",
-    )
 
     return result_df
 

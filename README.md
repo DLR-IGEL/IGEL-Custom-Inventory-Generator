@@ -1,334 +1,298 @@
 # IGEL Custom Emission Inventory Generator
 
-## Overview
+The IGEL Custom Emission Inventory Generator creates gridded rocket-launch
+emission inventories from launch-specific propellant-use profiles and engine
+emission indices. It aggregates emissions in space and time and writes
+CF-1.8-labelled NetCDF files for use in atmospheric research.
 
-This tool generates **global emission inventories from rocket launches** based on launch-specific propellant use profiles and engine emission indices. It processes launch data, computes primary and post-combustion emissions, aggregates them temporally and spatially, and exports the results as **CF-compliant NetCDF files**.
-
-The workflow is designed for reproducibility and supports configurable:
-
-* spatial resolution
-* temporal resolution
-* emission units
-* vertical coordinate systems
-* domain boundaries
-* post combustion
-
-\---
+This repository contains the software used in the context of the DLR Inventory
+of Global Emissions by Launchers (IGEL) 2024. The IGEL 2024 input dataset is a
+separate research artifact; users must supply the launch list, propellant-use
+profiles, and engine data described below.
 
 ## Features
 
-* Calculation of **primary emissions** from engine data
-* Optional **post-combustion modeling (CSVEM)**
-* Temporal aggregation into configurable timesteps
-* Spatial aggregation on a configurable global grid
-* Conversion to multiple emission formats:
+- Primary exhaust calculation from engine-specific absolute mass fractions
+- Optional Commercial Space Vehicle Emissions Modeling (CSVEM)
+  post-combustion treatment
+- Configurable daily, weekly, or monthly temporal aggregation
+- Configurable horizontal and vertical grid resolution
+- Mass, molecule-count, molecule-rate, and volumetric molecule-rate output
+- Altitude or USSA1976 pressure vertical coordinates
+- Single-file or per-timestep NetCDF export
+- Optional export of intermediate launch profiles
+- Local NetCDF verification with structural, sanity, metadata, and mass checks
 
-  * mass (kg)
-  * molecules
-  * molecule rate (1/s)
-  * molecule rate per volume/flux (1/(m³·s))
-* Vertical coordinate options:
+## Requirements
 
-  * altitude
-  * pressure (USSA1976)
-* Export to:
-
-  * single NetCDF file
-  * one NetCDF per timestep
-* CF-compliant metadata and dimensions
-* Optional export of intermediate emission profiles
-
-\---
+- Python 3.11 or 3.12
+- A platform supported by the scientific Python dependencies
+- Sufficient memory for the selected global grid and number of timesteps
 
 ## Installation
 
-### Requirements
+### Conda environment
 
-* Python ≥ 3.10
-* Recommended: Conda environment
-
-### Install dependencies
-
-This project uses a fully specified Conda environment to ensure reproducibility.
-
-### Create predefined environment (recommended)
+The pinned environment is the recommended route for reproducing a published
+inventory:
 
 ```bash
 conda env create -f environment.yml
 conda activate IGEL-custom-inventory-generator
+python -m pip install --no-deps -e .
 ```
 
-### Alternative: Create own environment
+### pip
 
-Using pip:
+Install the package and its declared runtime dependencies:
 
 ```bash
-pip install numpy pandas xarray netCDF4 pyyaml tqdm ussa1976 scipy python-dateutil
+python -m pip install .
 ```
 
-Or using conda:
+For development and testing:
 
 ```bash
-conda create -n IGEL-custom-inventory-generator python=3.12 numpy pandas xarray netcdf4 pyyaml tqdm scipy math python-dateutil
-conda activate IGEL-custom-inventory-generator
-pip install ussa1976
+python -m pip install -e ".[test]"
 ```
 
-\---
+## Command-line usage
 
-## Usage
-
-Run the generator using a configuration file, or run verification on an existing local NetCDF inventory:
+After installation:
 
 ```bash
-python your/path/to/IGEL\_custom\_inventory\_generator.py --config your/path/to/config.yaml
+IGEL_custom_inventory_generator --config config/example_config.yaml
 ```
 
-\---
+The equivalent module invocation is:
 
-## Input Data
-
-### 1\. Launch List (CSV)
-
-Required columns:
-
-* `Launch\_Tag`
-* `Launch\_Date` (format: `YYYY Mon DD`, e.g. `2024 Jan 3`)
-
-Each row represents one launch and is counted once.
-
-\---
-
-### 2\. Propellant Use Profiles
-
-One CSV per launch\_tag:
-
-```
-<Launch\_Tag>\_propellant\_use\_profile.csv
+```bash
+python -m IGEL_custom_inventory_generator --config config/example_config.yaml
 ```
 
-Contains spatial bins and engine-specific emissions:
+Display help:
 
-* `ALTITUDE\_MIN`, `ALTITUDE\_MAX`
-* `LATITUDE\_MIN`, `LATITUDE\_MAX`
-* `LONGITUDE\_MIN`, `LONGITUDE\_MAX`
-* `species\_mass\_<engine>\_sum`
-
-\---
-
-### 3\. Engine Data
-
-One CSV per engine:
-
+```bash
+IGEL_custom_inventory_generator --help
 ```
-<engine\_name>\_primary\_exhaust\_indices.csv
-```
-
-Required columns:
-
-* `Species`
-* `Absolute mass fractions`
-
-\---
 
 ## Configuration
 
-A commented config.yaml is provided with the distributed code. It explains each input parameter.
-Example for IGEL 2024 Inventory `config.yaml`:
+The commented [`config/example_config.yaml`](config/example_config.yaml)
+contains every required setting. Paths are interpreted relative to the current
+working directory, so run the example from the repository root or replace the
+paths with absolute paths.
 
-```yaml
+The main sections are:
 
-metadata:
-  config\_version: "1.0"                       
-  inventory\_name: "custom\_inventory"          
-  institution: "DLR-SRT"                      
-  creator\_name: "Moritz Herberhold"          
-  creator\_email: "moritz.herberhold@dlr.de"   
-  project: "S3D-BETTER"                       
+- `metadata`: dataset and creator metadata written to NetCDF
+- `input_data`: launch list, propellant-use profiles, and engine data
+- `output`: output location, format, units, and overwrite behavior
+- `processing`: post-combustion method and time resolution
+- `domain`: spatial inclusion boundaries
+- `grid`: target spatial resolution
+- `time_range`: inclusive inventory date range
 
-output:
-  directory: ./output
-  run\_name: example\_run
-  overwrite: true
-  export\_individual\_profiles: true
-  inventory\_emission\_unit: molecule\_rate\_per\_volume
-  inventory\_vertical\_coordinate: pressure
-  inventory\_netcdf\_mode: single\_file
+## Input data
 
-processing:
-  post\_combustion: CSVEM
-  time\_resolution: 1m
+### Launch list
 
-domain:
-  altitude\_min\_km: 0
-  altitude\_max\_km: 80
-  latitude\_min\_deg: -90
-  latitude\_max\_deg: 90
-  longitude\_min\_deg: -180
-  longitude\_max\_deg: 180
-  inclusive: true
-  emissions\_above\_inventory: discard
-grid:
-  altitude\_resolution\_km: 1
-  latitude\_resolution\_deg: 1
-  longitude\_resolution\_deg: 1
+The launch-list CSV requires:
 
-time\_range:
-  start\_date: 01-01-2024
-  end\_date: 31-12-2024
+| Column | Meaning |
+|---|---|
+| `Launch_Tag` | Identifier used to locate the corresponding propellant-use profile |
+| `Launch_Date` | Launch date in `%Y %b %d` format, for example `2024 Jan 03` |
+| `Launch_JD` | Launch Julian-date metadata retained for compatibility with IGEL source data |
+
+Each row represents one launch and contributes one copy of its referenced
+profile.
+
+### Propellant-use profiles
+
+For each unique launch tag, provide:
+
+```text
+<Launch_Tag>_propellant_use_profile.csv
 ```
 
-\---
+Required spatial and total columns:
 
-## Workflow
+- `ALTITUDE_MIN`, `ALTITUDE_MAX`
+- `LATITUDE_MIN`, `LATITUDE_MAX`
+- `LONGITUDE_MIN`, `LONGITUDE_MAX`
+- `NUM`
+- `species_mass_Total` or `species_mass_Total_sum`
 
-1. Load input data
-2. Compute primary emissions
-3. Apply post-combustion (optional)
-4. Aggregate emissions per timestep
-5. Enforce domain boundaries
-6. Collapse bins to midpoints
-7. Convert emission units and vertical coordinates
-8. Export NetCDF inventory
+At least one engine-specific column is required:
 
-\---
+```text
+species_mass_<engine_name>
+```
+
+A trailing `_sum` is accepted and removed while loading. Input spatial bins
+must have a 0.01-unit width and be aligned to the 0.01 base grid. Target grid
+resolutions must be positive multiples of 0.02.
+
+### Engine data
+
+For each referenced engine, provide:
+
+```text
+<engine_name>_primary_exhaust_indices.csv
+```
+
+Required columns:
+
+| Column | Meaning |
+|---|---|
+| `Species` | Species identifier used by the generator |
+| `Absolute_Mass_Fraction` | Species mass per unit engine propellant mass |
+
+Species names must be available in the internal species database when molecule
+conversion is requested.
+
+## Processing methodology
+
+The generator performs these steps:
+
+1. Validate the configuration and input schemas.
+2. Re-bin propellant-use profiles to the requested grid.
+3. Calculate primary species emissions from engine mass fractions.
+4. Apply optional CSVEM post-combustion equations.
+5. Select launches for each timestep and combine their profiles.
+6. Apply configured domain handling.
+7. Convert spatial bins to midpoint coordinates.
+8. Convert emission and vertical-coordinate units.
+9. Construct and write the NetCDF inventory.
+
+The optional post-combustion implementation follows the altitude-dependent
+formulations described by Barker et al. (2024), which in turn cite the National
+Academies CSVEM report. These formulations carry substantial uncertainty,
+particularly above 40 km. Users should account for that uncertainty when
+interpreting post-combustion inventories.
+
+References:
+
+- Barker, C. R. et al. (2024), “Global 3D rocket launch and re-entry air
+  pollutant and CO2 emissions at the onset of the megaconstellation era,”
+  *Scientific Data*, 11, 1079.
+  <https://doi.org/10.1038/s41597-024-03910-z>
+- National Academies of Sciences, Engineering, and Medicine (2021),
+  *Commercial Space Vehicle Emissions Modeling*.
+  <https://doi.org/10.17226/26142>
+- Herberhold, M., Wilken, J., Callsen, S., and Sippel, M. (2025),
+  “DLR Global Launch Emission Inventory 2024: Overview and Initial Results,”
+  IAC-25-D6.2.4. <https://elib.dlr.de/222025/>
 
 ## Output
 
-### NetCDF Inventory
+Generated files are written below:
 
-* Dimensions: `(time, lev, lat, lon)`
-* Global coverage:
-
-  * latitude: -90 to 90
-  * longitude: -180 to 180
-* Time axis:
-
-  * CF-compliant
-  * includes bounds
-* Compression enabled
-
-### Variables
-
-Each species:
-
-```
-species\_<type>\_<species>
-
-Example:
-
+```text
+<output.directory>/
+├── final_emission_profiles/       # optional
+├── inventory_netcdf/
+└── primary_exhaust_profiles/      # optional
 ```
 
-species\_molecule\_rate\_per\_volume\_CO2
+NetCDF emission variables follow one of these patterns:
 
+```text
+species_mass_<species>
+species_molecules_<species>
+species_molecule_rate_<species>
+species_molecule_rate_per_volume_<species>
 ```
 
-### Metadata
+The main dimensions are `(time, lev, lat, lon)`. Coordinate and time bounds,
+configuration metadata, creator metadata, and processing choices are included
+in the file.
 
-Includes:
+## Verification
 
-\* emission units
-\* coordinate units
-\* run name
-\* inventory configuration
+Verify a local inventory file:
 
----
+```bash
+IGEL_custom_inventory_generator --verify /path/to/inventory.nc
+```
 
-## Performance Notes
+Verification prints a report and writes:
 
-\* Runtime scales with:
+```text
+<inventory_name>_verification_log.txt
+```
 
-  \* number of timesteps
-  \* grid resolution
-  \* number of launches
-\* NetCDF writing can take \*\*several minutes\*\* for large datasets
-\* Progress bars are shown during data processing
+next to the verified file. It checks structure, numeric sanity, metadata
+consistency, and species totals converted back to kilograms.
 
----
+## Reproducibility
+
+For a reproducible publication run:
+
+1. Record the Git commit or release tag.
+2. Create the pinned Conda environment from `environment.yml`.
+3. Archive the exact configuration and all input tables.
+4. Record checksums for the input tables and generated NetCDF files.
+5. Retain the verification log.
+6. Report whether CSVEM post-combustion was enabled.
+
+The software does not download launch or engine data and does not modify input
+files.
 
 ## Testing
 
-Run tests using:
+Run the regression test suite:
 
 ```bash
 pytest -q
 ```
 
-\---
+The GitHub Actions workflow builds the package and runs the same suite on the
+supported Python versions.
 
-## Reproducibility
+## Preserved IGEL grid convention
 
-To ensure reproducibility:
+To avoid changing established IGEL inventory results, this publication branch
+retains the existing midpoint convention: configured domain minima and maxima
+are inclusive midpoint coordinates. A nominal 1° global grid therefore
+contains latitude midpoints from -90° through 90° and longitude midpoints from
+-180° through 180°.
 
-* use fixed environment versions
-* store config files with outputs
-* track input datasets
+Consequences of this legacy convention:
 
-\---
+- the two longitude endpoint coordinates represent the same geographic
+  meridian;
+- polar cell bounds extend by half a grid cell beyond ±90°;
+- calculated polar cell volume is zero for symmetric endpoint-centred bounds.
+
+Do not place emissions exactly at ±90° when requesting
+`molecule_rate_per_volume`. The convention is preserved here strictly for
+compatibility with existing IGEL inventory creation and should be considered
+when remapping output to another model grid.
 
 ## Limitations
 
-* Memory usage increases with grid size
-* NetCDF writing is currently single-threaded
-* Vertical pressure conversion limited to USSA1976 range
-
-\---
+- Runtime and memory use increase with grid resolution, number of species, and
+  number of timesteps.
+- NetCDF writing is single-threaded.
+- Pressure conversion is limited to the USSA1976 range up to 1000 km.
+- CSVEM coefficients are empirical and uncertain, especially above 40 km.
+- The legacy endpoint-centred global grid convention is retained for
+  compatibility, as described above.
 
 ## Citation
 
-If you use this tool, please cite:
-
-```
-\[Your publication / data descriptor here]
-```
-
-\---
+Please cite the software using [`CITATION.cff`](CITATION.cff) and cite the IGEL
+2024 data publication separately when using the published dataset.
 
 ## License
 
-Specify your license here (e.g. MIT, BSD-3-Clause).
+Copyright © 2026 DLR-IGEL and Moritz Herberhold.
 
-\---
+The software is distributed under the [MIT License](LICENSE).
 
-## Contact
+## Contributing
 
-Maintainer: Moritz Herberhold DLR-SRT (moritz.herberhold@dlr.de)
-Project context: Global Emission Inventory to determine impact of rocket launches on our environment created by DLR-SRT in the S3D-BETTER project
-
-
-
-## Verification Mode
-
-The CLI also supports verification of an existing NetCDF inventory:
-
-```bash
-python IGEL\_custom\_inventory\_generator.py --verify /path/to/inventory.nc
-
-```
-
-Verification mode:
-
-* prints all global metadata
-* performs structural validation
-* performs data sanity checks
-* performs metadata-vs-data cross-checks
-* converts every species back to total mass in kg regardless of stored inventory unit
-* prints total mass per species
-* prints per-timestep mass totals per species
-* optionally compares two inventory files
-* writes a text log named:
-
-```
-<inventoryfilename>\_verification\_log.txt
-```
-
-For local files, the log is written next to the verified inventory file. For HTTP(S) URLs, the log is written to the current working directory.
-
-## Help
-
-Both of the following show the command line help:
-
-```bash
-python IGEL\_custom\_inventory\_generator.py
-python IGEL\_custom\_inventory\_generator.py --help
-```
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for development and review guidance.
+Bug reports and focused pull requests are welcome.

@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from constants import SPECIES_DB
-from errors import PostCombustionError
+from .constants import SPECIES_DB
+from .errors import PostCombustionError
 
 
 def apply_csvem_postcombustion(

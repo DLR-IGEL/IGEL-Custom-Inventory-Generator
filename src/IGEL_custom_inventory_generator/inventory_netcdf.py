@@ -10,7 +10,7 @@ import pandas as pd
 import xarray as xr
 from tqdm import tqdm
 
-from constants import (
+from .constants import (
     GLOBAL_LAT_MAX_DEG,
     GLOBAL_LAT_MIN_DEG,
     GLOBAL_LON_MAX_DEG,
@@ -31,10 +31,10 @@ from constants import (
     TOOL_NAME,
     TOOL_VERSION,
 )
-from errors import ExportError
-from inventory_timesteps import parse_timestep_key
-from inventory_transform import _altitudes_km_to_pressures_pa
-from models import Config
+from .errors import ExportError
+from .inventory_timesteps import parse_timestep_key
+from .inventory_transform import _altitudes_km_to_pressures_pa
+from .models import Config
 
 
 def _round_coord_value(value: float) -> float:

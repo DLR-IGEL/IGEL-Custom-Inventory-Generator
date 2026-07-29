@@ -1,75 +1,55 @@
 metadata:
-  config_version: "1.0"                       # Version of the config schema. Increase if fields or meanings change.
-  inventory_name: "custom_inventory"          # Human-readable name of this inventory run or dataset family.
-  institution: "Your Institution"                      # Institution of the user for NetCDF-Metadata
-  creator_name: "Your Name"           # Name of the user for NetCDF-Metadata
-  creator_email: "Your Name"   # E-Mail of the user for NetCDF-Metadata
-  project: "S3D-BETTER"                       # Project name for NetCDF-Metadata
-
+  config_version: "1.0"
+  inventory_name: "IGEL custom inventory example"
+  institution: "German Aerospace Center (DLR)"
+  creator_name: "Example User"
+  creator_email: "user@example.org"
+  project: "IGEL"
 
 input_data:
-  launch_list: /home/moritz/work/projects/exhaust/Inventory_Calculator/data/output/Publication_Data/Custom_Inventory_Generator/Input/Launch_List_test.csv
-    # Path to the CSV file listing all launches to be included in the inventory.
-  propellant_use_profiles_dir: /home/moritz/work/projects/exhaust/Inventory_Calculator/data/output/Publication_Data/Custom_Inventory_Generator/Input/Propellant_Use_Profiles
-    # Directory containing propellant use profile files.
-  engine_data_dir: /home/moritz/work/projects/exhaust/Inventory_Calculator/data/output/Publication_Data/Custom_Inventory_Generator/Input/Engine_Data
-    # Directory containing engine-specific performance and emission data.
+  # Paths are resolved from the current working directory.
+  launch_list: examples/minimal_input/Launch_List.csv
+  propellant_use_profiles_dir: examples/minimal_input/Propellant_Use_Profiles
+  engine_data_dir: examples/minimal_input/Engine_Data
 
 output:
-  directory: /home/moritz/work/projects/exhaust/Inventory_Calculator/data/output/Publication_Data/Custom_Inventory_Generator/Output
-    # Output directory where generated inventory files, logs, and metadata will be written.
-  run_name: custom_inventory_2024_1deg_max_alt_80km_1m  # Short identifier for this specific run. Can be used in output filenames and logs.
-  overwrite: true                      # If true, existing outputs for the same run_name may be replaced.
-  export_individual_profiles: true      # If true, individual primary exhaust and final emission profiles will be exported for every included launch
+  directory: output
+  run_name: minimal_example
+  overwrite: true
+  export_individual_profiles: true
+  # Allowed values:
+  #   mass
+  #   molecules
+  #   molecule_rate
+  #   molecule_rate_per_volume
   inventory_emission_unit: mass
-    # Format for the emissions in the final inventory
-    # Allowed values:
-    #  mass                       -> mass per species per bin in kg
-    #  molecules                  -> molecules per species per bin
-    #  molecule_rate              -> molecules per species per bin per secund in 1/s
-    #  molecule_rate_per_volume   -> molecules per species per cubicmeter per second 1/(s*m^3) 
+  # Allowed values: altitude, pressure
   inventory_vertical_coordinate: altitude
-    # Coordinate for the cell 
-    # Allowed values:
-    #  pressure                   -> ambient pressure level at altitude following ussa1976
-    #  altitude                   -> altitude in m
+  # Allowed values: single_file, per_timestep_files
   inventory_netcdf_mode: single_file
-    # Defines the output as one or multiple NetCDF files
-    # Allowed values:
-    #   single_file        -> one NetCDF with all timesteps
-    #   per_timestep_files -> one NetCDF per timestep
 
 processing:
-  post_combustion: CSVEM
-    # Post-combustion treatment method.
-    # Allowed values:
-    #   CSVEM  -> apply the Comercial Space Vehicle Emission Modelling post-combustion method
-    #   null   -> disable post-combustion treatment
-
-  time_resolution: "1m"
-    # Temporal resolution of the output inventory.
-    # Format: integer + unit
-    #   d = days, w = weeks, m = months
-    # Examples: "1d", "7d", "1w", "1m", "3m"
+  # Allowed values: CSVEM, null
+  post_combustion: null
+  # Positive integer followed by d (days), w (weeks), or m (months).
+  time_resolution: "1d"
 
 domain:
-  altitude_min_km: 0                    # Lower bound of the vertical inventory domain in kilometers. Minimum 0km if emission altitude should be given by pressure.
-  altitude_max_km: 80                  # Upper bound of the vertical inventory domain in kilometers. Maximum 1000km if emission altitude should be given by pressure.
-  latitude_min_deg: -90                 # Minimum latitude of the inventory domain in degrees.
-  latitude_max_deg: 90                  # Maximum latitude of the inventory domain in degrees.
-  longitude_min_deg: -180               # Minimum longitude of the inventory domain in degrees.
-  longitude_max_deg: 180                # Maximum longitude of the inventory domain in degrees.
-  inclusive: true                       # true: bins with midpoint on boundary are included; false:bins with midpoint on boundary are excluded
-  emissions_above_inventory: include_at_top_layer
-    # Allowed values:
-    #   discard              -> emissions above altitude_max_km are discarded
-    #   include_at_top_layer -> emissions above altitude_max_km are moved into the top layer
+  altitude_min_km: 0
+  altitude_max_km: 1
+  latitude_min_deg: -1
+  latitude_max_deg: 1
+  longitude_min_deg: -1
+  longitude_max_deg: 1
+  inclusive: true
+  # Allowed values: discard, include_at_top_layer
+  emissions_above_inventory: discard
 
 grid:
-  altitude_resolution_km: 1             # Vertical grid resolution in kilometers. Must be a positive natural multiple of 0.02 km.
-  latitude_resolution_deg: 1          # Latitudinal grid resolution in degrees. Must be a positive natural multiple of 0.02°.
-  longitude_resolution_deg: 1          # Longitudinal grid resolution in degrees. Must be a positive natural multiple of 0.02°.
+  altitude_resolution_km: 1
+  latitude_resolution_deg: 1
+  longitude_resolution_deg: 1
 
 time_range:
-  start_date: "01-01-2024"            # Inclusive start date of the inventory period in DD-MM-YYYY format.
-  end_date: "31-12-2024"              # Inclusive end date of the inventory period in DD-MM-YYYY format.
+  start_date: "01-01-2024"
+  end_date: "01-01-2024"

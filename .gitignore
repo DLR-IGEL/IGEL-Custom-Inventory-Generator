@@ -1,0 +1,26 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Build and packaging output
+build/
+dist/
+*.egg-info/
+
+# Environments
+.env
+.venv/
+venv/
+
+# Generated inventory output
+output/
+*_verification_log.txt
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/

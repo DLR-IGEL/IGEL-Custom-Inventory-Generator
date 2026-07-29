@@ -4,23 +4,23 @@ import argparse
 import sys
 from pathlib import Path
 
-from inventory_config import load_config
-from constants import DATE_FORMAT, SPECIES_DB
-from emissions_final import calculate_final_emissions
-from emissions_primary import calculate_primary_exhaust
-from errors import ConfigError, VerificationError
-from inventory_netcdf import export_inventory_netcdfs
-from inventory_timesteps import build_timestep_inventory_dataframes
-from inventory_transform import transform_timestep_inventory_dict
-from inventory_verify import verify_inventory_netcdf
-from io_inputs import (
+from .constants import DATE_FORMAT, SPECIES_DB
+from .emissions_final import calculate_final_emissions
+from .emissions_primary import calculate_primary_exhaust
+from .errors import ConfigError, VerificationError
+from .inventory_config import load_config
+from .inventory_netcdf import export_inventory_netcdfs
+from .inventory_timesteps import build_timestep_inventory_dataframes
+from .inventory_transform import transform_timestep_inventory_dict
+from .inventory_verify import verify_inventory_netcdf
+from .io_inputs import (
     export_final_emission_profiles,
     export_primary_exhaust_profiles,
     load_engine_data,
     load_launch_list,
     load_propellant_use_profiles,
 )
-from models import Config
+from .models import Config
 
 
 
@@ -28,7 +28,7 @@ def run_inventory_generator(config: Config) -> None:
     output_dir = config.output.directory
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print("Starting DLR-IGEL-Custom-Inevntory-Generator")
+    print("Starting DLR-IGEL-Custom-Inventory-Generator")
     print("This tool was created by Moritz Herberhold as part of the DLR S3D-BETTER project")
     print("Configuration loaded successfully.")
     print(f"Inventory name:                 {config.metadata.inventory_name}")

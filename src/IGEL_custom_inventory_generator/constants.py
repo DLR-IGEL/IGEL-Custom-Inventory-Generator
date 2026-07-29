@@ -11,7 +11,7 @@ TIME_RESOLUTION_PATTERN = re.compile(r"^(?P<value>[1-9]\d*)(?P<unit>[dwm])$")
 
 REQUIRED_ENGINE_COLUMNS = {"Species", "Absolute_Mass_Fraction"}
 ENGINE_FILE_PATTERN = re.compile(r"^(?P<engine_name>.+)_primary_exhaust_indices\.csv$")
-REQUIRED_LAUNCH_LIST_COLUMNS = {"Launch_Tag", "Launch_Date"}
+REQUIRED_LAUNCH_LIST_COLUMNS = {"Launch_Tag", "Launch_Date", "Launch_JD"}
 REQUIRED_PROFILE_TOTAL_COLUMN = "species_mass_Total"
 ENGINE_PROFILE_COLUMN_PATTERN = re.compile(r"^species_mass_(?P<engine_name>.+)$")
 SPECIES_MASS_COLUMN_PATTERN = re.compile(r"^species_mass_(?P<species>.+)$")

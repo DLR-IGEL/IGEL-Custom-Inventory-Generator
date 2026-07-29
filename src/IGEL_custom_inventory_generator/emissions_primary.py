@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from constants import ENGINE_PROFILE_COLUMN_PATTERN
-from errors import PrimaryEmissionError
+from .constants import ENGINE_PROFILE_COLUMN_PATTERN
+from .errors import PrimaryEmissionError
 
 
 def _build_engine_species_factors(
