@@ -1,0 +1,19 @@
+name: IGEL-custom-inventory-generator
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy=2.1
+  - pandas=2.2
+  - scipy=1.14
+  - pyyaml=6.0
+  - tqdm=4.67
+  - xarray=2025.1
+  - netcdf4=1.7
+  - cftime=1.6
+  - dask=2025.2
+  - pytest=8.3
+  - python-dateutil
+  - pip
+  - pip:
+      - ussa1976==0.3.4
