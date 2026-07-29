@@ -94,7 +94,8 @@ Required columns:
 
 * `Launch\_Tag`
 * `Launch\_Date` (format: `YYYY Mon DD`, e.g. `2024 Jan 3`)
-* `Multiplier`
+
+Each row represents one launch and is counted once.
 
 \---
 
@@ -331,4 +332,3 @@ Both of the following show the command line help:
 python IGEL\_custom\_inventory\_generator.py
 python IGEL\_custom\_inventory\_generator.py --help
 ```
-

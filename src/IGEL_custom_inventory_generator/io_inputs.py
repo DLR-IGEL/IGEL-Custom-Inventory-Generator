@@ -124,12 +124,6 @@ def validate_launch_list_dataframe(df: pd.DataFrame, file_name: str) -> None:
     if df["Launch_Date"].isna().any():
         raise LaunchListError(f"Launch list file '{file_name}' contains missing Launch_Date values.")
 
-    multiplier_numeric = pd.to_numeric(df["Multiplier"], errors="coerce")
-    if multiplier_numeric.isna().any():
-        raise LaunchListError(
-            f"Launch list file '{file_name}' contains non-numeric values in 'Multiplier'."
-        )
-
 
 def _to_decimal(value: float | str) -> Decimal:
     return Decimal(str(value))
