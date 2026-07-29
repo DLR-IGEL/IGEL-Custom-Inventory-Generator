@@ -103,7 +103,6 @@ The launch-list CSV requires:
 |---|---|
 | `Launch_Tag` | Identifier used to locate the corresponding propellant-use profile |
 | `Launch_Date` | Launch date in `%Y %b %d` format, for example `2024 Jan 03` |
-| `Launch_JD` | Launch Julian-date metadata retained for compatibility with IGEL source data |
 
 Each row represents one launch and contributes one copy of its referenced
 profile.
@@ -121,8 +120,6 @@ Required spatial and total columns:
 - `ALTITUDE_MIN`, `ALTITUDE_MAX`
 - `LATITUDE_MIN`, `LATITUDE_MAX`
 - `LONGITUDE_MIN`, `LONGITUDE_MAX`
-- `NUM`
-- `species_mass_Total` or `species_mass_Total_sum`
 
 At least one engine-specific column is required:
 
@@ -130,9 +127,7 @@ At least one engine-specific column is required:
 species_mass_<engine_name>
 ```
 
-A trailing `_sum` is accepted and removed while loading. Input spatial bins
-must have a 0.01-unit width and be aligned to the 0.01 base grid. Target grid
-resolutions must be positive multiples of 0.02.
+A trailing `_sum` is accepted and removed while loading.
 
 ### Engine data
 
@@ -226,19 +221,6 @@ Verification prints a report and writes:
 next to the verified file. It checks structure, numeric sanity, metadata
 consistency, and species totals converted back to kilograms.
 
-## Reproducibility
-
-For a reproducible publication run:
-
-1. Record the Git commit or release tag.
-2. Create the pinned Conda environment from `environment.yml`.
-3. Archive the exact configuration and all input tables.
-4. Record checksums for the input tables and generated NetCDF files.
-5. Retain the verification log.
-6. Report whether CSVEM post-combustion was enabled.
-
-The software does not download launch or engine data and does not modify input
-files.
 
 ## Testing
 
@@ -251,35 +233,14 @@ pytest -q
 The GitHub Actions workflow builds the package and runs the same suite on the
 supported Python versions.
 
-## Preserved IGEL grid convention
-
-To avoid changing established IGEL inventory results, this publication branch
-retains the existing midpoint convention: configured domain minima and maxima
-are inclusive midpoint coordinates. A nominal 1° global grid therefore
-contains latitude midpoints from -90° through 90° and longitude midpoints from
--180° through 180°.
-
-Consequences of this legacy convention:
-
-- the two longitude endpoint coordinates represent the same geographic
-  meridian;
-- polar cell bounds extend by half a grid cell beyond ±90°;
-- calculated polar cell volume is zero for symmetric endpoint-centred bounds.
-
-Do not place emissions exactly at ±90° when requesting
-`molecule_rate_per_volume`. The convention is preserved here strictly for
-compatibility with existing IGEL inventory creation and should be considered
-when remapping output to another model grid.
-
 ## Limitations
 
 - Runtime and memory use increase with grid resolution, number of species, and
   number of timesteps.
 - NetCDF writing is single-threaded.
 - Pressure conversion is limited to the USSA1976 range up to 1000 km.
-- CSVEM coefficients are empirical and uncertain, especially above 40 km.
-- The legacy endpoint-centred global grid convention is retained for
-  compatibility, as described above.
+- CSVEM coefficients are empirical and uncertain.
+
 
 ## Citation
 
