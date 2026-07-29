@@ -1,6 +1,7 @@
 name: IGEL-custom-inventory-generator
 channels:
   - conda-forge
+  - nodefaults
 dependencies:
   - python=3.12
   - numpy=2.1
@@ -13,7 +14,6 @@ dependencies:
   - cftime=1.6
   - dask=2025.2
   - pytest=8.3
-  - build=1.2
   - setuptools>=77
   - python-dateutil
   - pip
