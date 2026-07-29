@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
-from constants import (
+from .constants import (
     BASE_ALTITUDE_RESOLUTION_KM,
     BASE_LATITUDE_RESOLUTION_DEG,
     BASE_LONGITUDE_RESOLUTION_DEG,
@@ -19,7 +19,7 @@ from constants import (
     REQUIRED_LAUNCH_LIST_COLUMNS,
     REQUIRED_PROFILE_TOTAL_COLUMN,
 )
-from errors import EngineDataError, ExportError, LaunchListError, PropellantUseProfileError
+from .errors import EngineDataError, ExportError, LaunchListError, PropellantUseProfileError
 
 
 def load_engine_data(engine_data_dir: str | Path) -> dict[str, pd.DataFrame]:
@@ -123,12 +123,6 @@ def validate_launch_list_dataframe(df: pd.DataFrame, file_name: str) -> None:
 
     if df["Launch_Date"].isna().any():
         raise LaunchListError(f"Launch list file '{file_name}' contains missing Launch_Date values.")
-
-    multiplier_numeric = pd.to_numeric(df["Multiplier"], errors="coerce")
-    if multiplier_numeric.isna().any():
-        raise LaunchListError(
-            f"Launch list file '{file_name}' contains non-numeric values in 'Multiplier'."
-        )
 
 
 def _to_decimal(value: float | str) -> Decimal:

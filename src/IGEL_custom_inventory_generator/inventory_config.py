@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-from constants import (
+from .constants import (
     ALLOWED_EMISSIONS_ABOVE_INVENTORY_OPTIONS,
     ALLOWED_INVENTORY_EMISSION_UNITS,
     ALLOWED_INVENTORY_NETCDF_MODES,
@@ -15,8 +15,8 @@ from constants import (
     DATE_FORMAT,
     TIME_RESOLUTION_PATTERN,
 )
-from errors import ConfigError
-from models import (
+from .errors import ConfigError
+from .models import (
     Config,
     DomainConfig,
     GridConfig,
@@ -314,7 +314,7 @@ def _validate_multiple_of_0p02(value: float, field_name: str) -> None:
 
     scaled = value / 0.02
     if not math.isclose(scaled, round(scaled), rel_tol=0.0, abs_tol=1e-9):
-        raise ConfigError(f"{field_name} must be a natural multiple of 0.01.")
+        raise ConfigError(f"{field_name} must be a natural multiple of 0.02.")
 
 
 def _require_key(data: dict[str, Any], key: str, section: str) -> Any:

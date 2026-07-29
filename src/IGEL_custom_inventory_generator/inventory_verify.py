@@ -8,7 +8,7 @@ import numpy as np
 import xarray as xr
 from netCDF4 import Dataset as NetCDFDataset
 
-from constants import (
+from .constants import (
     NETCDF_LAT_AXIS_NAME,
     NETCDF_LON_AXIS_NAME,
     NETCDF_TIME_AXIS_NAME,
@@ -16,7 +16,7 @@ from constants import (
     NETCDF_VERTICAL_AXIS_NAME,
     SPECIES_DB,
 )
-from errors import VerificationError
+from .errors import VerificationError
 
 
 REQUIRED_DIMS = {

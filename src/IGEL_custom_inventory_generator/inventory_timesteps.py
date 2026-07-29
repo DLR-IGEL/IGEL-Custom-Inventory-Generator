@@ -5,14 +5,14 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-from constants import (
+from .constants import (
     INVENTORY_SPATIAL_INDEX_COLUMNS,
     LAUNCH_DATE_INPUT_FORMAT,
     TIME_RESOLUTION_PATTERN,
     TIMESTEP_KEY_PATTERN,
 )
-from errors import ConfigError, ExportError, LaunchListError, PostCombustionError
-from models import DomainConfig
+from .errors import ConfigError, ExportError, LaunchListError, PostCombustionError
+from .models import DomainConfig
 
 def _sum_species_mass_columns(df: pd.DataFrame) -> float:
     species_mass_columns = [
@@ -128,15 +128,7 @@ def prepare_launch_list_for_inventory(launch_list_df: pd.DataFrame) -> pd.DataFr
             f"'{LAUNCH_DATE_INPUT_FORMAT}'. Bad values: {bad_values}"
         )
 
-    multiplier_numeric = pd.to_numeric(df["Multiplier"], errors="coerce")
-    if multiplier_numeric.isna().any():
-        bad_tags = df.loc[multiplier_numeric.isna(), "Launch_Tag"].astype(str).tolist()
-        raise LaunchListError(
-            f"Non-numeric Multiplier values found for launch tags: {bad_tags}"
-        )
-
     df["Launch_Date_Parsed"] = parsed_dates.dt.normalize()
-    df["Multiplier"] = multiplier_numeric.astype(float)
 
     return df
 
@@ -187,23 +179,6 @@ def _empty_timestep_inventory_dataframe(
     return pd.DataFrame(columns=inventory_columns)
 
 
-def _scale_single_launch_profile(
-    launch_profile_df: pd.DataFrame,
-    multiplier: float,
-) -> pd.DataFrame:
-    scaled_df = launch_profile_df.copy(deep=True)
-
-    numeric_columns = scaled_df.select_dtypes(include=[np.number]).columns.tolist()
-    columns_to_scale = [
-        col for col in numeric_columns if col not in INVENTORY_SPATIAL_INDEX_COLUMNS
-    ]
-
-    if columns_to_scale:
-        scaled_df[columns_to_scale] = scaled_df[columns_to_scale] * multiplier
-
-    return scaled_df
-
-
 def combine_final_emission_profiles_for_timestep(
     launches_in_timestep_df: pd.DataFrame,
     final_emissions_dict: dict[str, pd.DataFrame],
@@ -212,28 +187,19 @@ def combine_final_emission_profiles_for_timestep(
     if launches_in_timestep_df.empty:
         return _empty_timestep_inventory_dataframe(inventory_columns)
 
-    weighted_profiles: list[pd.DataFrame] = []
+    launch_profiles: list[pd.DataFrame] = []
 
-    launches_grouped = (
-        launches_in_timestep_df.groupby("Launch_Tag", as_index=False)["Multiplier"].sum()
-    )
-
-    for _, launch_row in launches_grouped.iterrows():
-        launch_tag = str(launch_row["Launch_Tag"])
-        multiplier = float(launch_row["Multiplier"])
+    for launch_tag_value in launches_in_timestep_df["Launch_Tag"]:
+        launch_tag = str(launch_tag_value)
 
         if launch_tag not in final_emissions_dict:
             raise PostCombustionError(
                 f"Launch tag '{launch_tag}' found in launch list but missing in final_emissions_dict."
             )
 
-        scaled_profile = _scale_single_launch_profile(
-            launch_profile_df=final_emissions_dict[launch_tag],
-            multiplier=multiplier,
-        )
-        weighted_profiles.append(scaled_profile)
+        launch_profiles.append(final_emissions_dict[launch_tag].copy(deep=True))
 
-    combined_df = pd.concat(weighted_profiles, ignore_index=True, sort=False)
+    combined_df = pd.concat(launch_profiles, ignore_index=True, sort=False)
 
     numeric_columns = combined_df.select_dtypes(include=[np.number]).columns.tolist()
     columns_to_sum = [
@@ -412,23 +378,15 @@ def build_timestep_inventory_dataframes(
             f"__{timestep_end.strftime('%Y-%m-%d')}"
         )
 
-        # Sum the referenced launch profiles before any combining/filtering
-        launches_grouped = (
-            launches_in_timestep.groupby("Launch_Tag", as_index=False)["Multiplier"].sum()
-            if not launches_in_timestep.empty
-            else pd.DataFrame(columns=["Launch_Tag", "Multiplier"])
-        )
-
         timestep_selected_mass = 0.0
-        for _, launch_row in launches_grouped.iterrows():
-            launch_tag = str(launch_row["Launch_Tag"])
-            multiplier = float(launch_row["Multiplier"])
+        for launch_tag_value in launches_in_timestep["Launch_Tag"]:
+            launch_tag = str(launch_tag_value)
             if launch_tag not in final_emissions_dict:
                 raise PostCombustionError(
                     f"Launch tag '{launch_tag}' found in launch list but missing in final_emissions_dict."
                 )
-            timestep_selected_mass += (
-                _sum_species_mass_columns(final_emissions_dict[launch_tag]) * multiplier
+            timestep_selected_mass += _sum_species_mass_columns(
+                final_emissions_dict[launch_tag]
             )
 
         timestep_inventory_df = combine_final_emission_profiles_for_timestep(
