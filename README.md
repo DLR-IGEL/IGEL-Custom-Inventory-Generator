@@ -8,7 +8,9 @@ CF-1.8-labelled NetCDF files for use in atmospheric research.
 This repository contains the software used in the context of the DLR Inventory
 of Global Emissions by Launchers (IGEL) 2024. The IGEL 2024 input dataset is a
 separate research artifact; users must supply the launch list, propellant-use
-profiles, and engine data described below.
+profiles, and engine data described below. The accompanying IGEL 2024 dataset 
+can be found under https://doi.org/10.5281/zenodo.21667787 and a visualization 
+of the dataset is provided under https://dlr-igel.github.io/IGEL-2024/
 
 ## Features
 
@@ -176,9 +178,13 @@ References:
 - National Academies of Sciences, Engineering, and Medicine (2021),
   *Commercial Space Vehicle Emissions Modeling*.
   <https://doi.org/10.17226/26142>
-- Herberhold, M., Wilken, J., Callsen, S., and Sippel, M. (2025),
-  “DLR Global Launch Emission Inventory 2024: Overview and Initial Results,”
-  IAC-25-D6.2.4. <https://elib.dlr.de/222025/>
+- Herberhold, M., Wilken, J., Callsen, S., Nützel, M., Yamashita, H., Sippel,
+  M., & Silvestri, S. (2026). *Inventory of Global Emissions by Launchers for
+  2024 (IGEL 2024)* [Data set]. Zenodo. [10.5281/zenodo.21667787]
+
+> Herberhold, M., Wilken, J., Callsen, S., Nützel, M., Yamashita, H., Sippel,
+  M., & Silvestri, S. *Inventory of global emissions by launchers for 2024*.
+  [Currently in review]
 
 ## Output
 
@@ -251,7 +257,7 @@ Please cite the software using [`CITATION.cff`](CITATION.cff) and cite the IGEL
 
 ## License
 
-Copyright © 2026 DLR-IGEL and Moritz Herberhold.
+Copyright © 2026 Moritz Herberhold.
 
 The software is distributed under the [MIT License](LICENSE).
 
