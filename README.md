@@ -1,6 +1,6 @@
-# IGEL Custom Emission Inventory Generator
+# IGEL Custom Inventory Generator
 
-The IGEL Custom Emission Inventory Generator creates gridded rocket-launch
+The IGEL Custom Inventory Generator creates gridded rocket-launch
 emission inventories from launch-specific propellant-use profiles and engine
 emission indices. It aggregates emissions in space and time and writes
 CF-1.8-labelled NetCDF files for use in atmospheric research.
