@@ -219,7 +219,9 @@ Verification prints a report and writes:
 ```
 
 next to the verified file. It checks structure, numeric sanity, metadata
-consistency, and species totals converted back to kilograms.
+consistency, and species totals converted back to kilograms. Species data is
+scanned in bounded chunks so verification also works with production-scale
+inventories on memory-constrained systems.
 
 
 ## Testing
