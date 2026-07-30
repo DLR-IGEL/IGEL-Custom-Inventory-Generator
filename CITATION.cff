@@ -18,17 +18,4 @@ keywords:
   - NetCDF
   - rocket launch
   - spaceflight
-references:
-  - type: conference-paper
-    title: "DLR Global Launch Emission Inventory 2024: Overview and Initial Results"
-    authors:
-      - family-names: Herberhold
-        given-names: Moritz
-      - family-names: Wilken
-        given-names: Jascha
-      - family-names: Callsen
-        given-names: Steffen
-      - family-names: Sippel
-        given-names: Martin
-    year: 2025
-    url: https://elib.dlr.de/222025/
+
