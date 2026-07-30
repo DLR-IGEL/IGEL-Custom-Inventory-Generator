@@ -36,3 +36,10 @@ def test_minimal_inventory_creation(tmp_path: Path) -> None:
         assert dataset.sizes["lat"] == 181
         assert dataset.sizes["lon"] == 361
         assert float(dataset["species_mass_CO2"].sum()) == 1.0
+
+    assert main(["--verify", str(inventory_path)]) == 0
+    verification_log = inventory_path.with_name(
+        "minimal_example_inventory_verification_log.txt"
+    )
+    assert verification_log.is_file()
+    assert "TOTAL_ALL_SPECIES: 1" in verification_log.read_text(encoding="utf-8")

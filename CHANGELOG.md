@@ -20,6 +20,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Packaging metadata declares runtime and test dependencies.
 - Documentation now matches the implemented input schemas and command-line
   interface.
+- NetCDF verification scans species data in bounded chunks instead of loading
+  and retaining complete four-dimensional species arrays.
 
 ### Removed
 

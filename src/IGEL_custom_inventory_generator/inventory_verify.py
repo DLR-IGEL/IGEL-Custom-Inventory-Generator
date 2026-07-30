@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import math
+from itertools import product
 from pathlib import Path
 
 import cftime
 import numpy as np
 import xarray as xr
-from netCDF4 import Dataset as NetCDFDataset
+from netCDF4 import (
+    Dataset as NetCDFDataset,
+    get_chunk_cache as get_netcdf_chunk_cache,
+    set_chunk_cache as set_netcdf_chunk_cache,
+)
 
 from .constants import (
     NETCDF_LAT_AXIS_NAME,
@@ -45,6 +50,8 @@ REQUIRED_GLOBAL_ATTRS = {
 }
 ALLOWED_UNITS = {"mass", "molecules", "molecule_rate", "molecule_rate_per_volume"}
 ALLOWED_VERTICAL = {"altitude", "pressure"}
+VERIFICATION_MAX_CHUNK_BYTES = 64 * 1024 * 1024
+VERIFICATION_NETCDF_CACHE_BYTES = 1024 * 1024
 
 
 class InventoryResource:
@@ -94,6 +101,53 @@ def _species_name_from_var(var_name: str) -> str:
     if not isinstance(var_name, str) or "_" not in var_name:
         raise VerificationError(f"Invalid species variable name: {var_name!r}")
     return var_name.split("_")[-1]
+
+
+def _bounded_chunk_shape(shape: tuple[int, ...]) -> tuple[int, ...]:
+    """Return a float64 chunk shape bounded by VERIFICATION_MAX_CHUNK_BYTES."""
+    if not shape:
+        return ()
+
+    chunk_shape = [max(1, int(size)) for size in shape]
+    if len(chunk_shape) == 4:
+        chunk_shape[0] = 1
+
+    max_elements = max(1, VERIFICATION_MAX_CHUNK_BYTES // np.dtype(np.float64).itemsize)
+    while math.prod(chunk_shape) > max_elements:
+        largest_axis = max(
+            range(len(chunk_shape)),
+            key=lambda axis: chunk_shape[axis],
+        )
+        if chunk_shape[largest_axis] == 1:
+            break
+        chunk_shape[largest_axis] = (chunk_shape[largest_axis] + 1) // 2
+
+    return tuple(chunk_shape)
+
+
+def _iter_chunk_slices(shape: tuple[int, ...]):
+    chunk_shape = _bounded_chunk_shape(shape)
+    starts_by_axis = [
+        range(0, axis_size, chunk_size)
+        for axis_size, chunk_size in zip(shape, chunk_shape, strict=True)
+    ]
+    for starts in product(*starts_by_axis):
+        yield tuple(
+            slice(start, min(start + chunk_size, axis_size))
+            for start, chunk_size, axis_size in zip(
+                starts,
+                chunk_shape,
+                shape,
+                strict=True,
+            )
+        )
+
+
+def _read_netcdf_chunk(variable, chunk_slices: tuple[slice, ...]) -> np.ndarray:
+    values = np.ma.asarray(variable[chunk_slices], dtype=np.float64)
+    if np.ma.isMaskedArray(values) and np.ma.is_masked(values):
+        return np.asarray(values.filled(np.nan), dtype=np.float64)
+    return np.asarray(values, dtype=np.float64)
 
 
 def _molar_mass_kg_per_molecule(species_name: str) -> float:
@@ -234,41 +288,44 @@ def _cell_volumes_from_metadata(ds: xr.Dataset) -> np.ndarray:
     return volumes.astype(float)
 
 
-def _convert_var_to_mass_kg(
-    ds: xr.Dataset,
-    ds_raw: xr.Dataset,
-    var_name: str,
-) -> tuple[np.ndarray, np.ndarray]:
-    unit_mode = str(ds.attrs.get("inventory_emission_unit", "")).strip()
-    species_name = _species_name_from_var(var_name)
-    data = np.asarray(ds[var_name].values, dtype=float)
-
-    if data.ndim != 4:
-        raise VerificationError(
-            f"Variable '{var_name}' is expected to have 4 dimensions (time, lev, lat, lon)."
-        )
-
-    if species_name == "Total":
-        raise VerificationError(
-            f"Variable '{var_name}' is an aggregate total and cannot be converted to species mass."
-        )
-
+def _convert_chunk_to_mass_kg_in_place(
+    data: np.ndarray,
+    *,
+    unit_mode: str,
+    species_name: str,
+    chunk_slices: tuple[slice, ...],
+    durations_seconds: np.ndarray | None,
+    cell_volumes_m3: np.ndarray | None,
+) -> None:
     if unit_mode == "mass":
-        mass = data
-    elif unit_mode == "molecules":
-        mass = data * _molar_mass_kg_per_molecule(species_name)
-    elif unit_mode == "molecule_rate":
-        durations = _time_bounds_seconds(ds_raw)[:, None, None, None]
-        mass = data * durations * _molar_mass_kg_per_molecule(species_name)
-    elif unit_mode == "molecule_rate_per_volume":
-        durations = _time_bounds_seconds(ds_raw)[:, None, None, None]
-        volumes = _cell_volumes_from_metadata(ds)[None, :, :, :]
-        mass = data * durations * volumes * _molar_mass_kg_per_molecule(species_name)
-    else:
-        raise VerificationError(f"Unsupported inventory_emission_unit '{unit_mode}'.")
+        return
 
-    per_timestep = mass.sum(axis=(1, 2, 3))
-    return mass, per_timestep
+    molar_mass = _molar_mass_kg_per_molecule(species_name)
+    if unit_mode == "molecules":
+        data *= molar_mass
+        return
+
+    if durations_seconds is None:
+        raise VerificationError(
+            f"Time bounds are required for inventory_emission_unit '{unit_mode}'."
+        )
+    time_slice = chunk_slices[0]
+    data *= durations_seconds[time_slice, None, None, None]
+
+    if unit_mode == "molecule_rate":
+        data *= molar_mass
+        return
+
+    if unit_mode == "molecule_rate_per_volume":
+        if cell_volumes_m3 is None:
+            raise VerificationError(
+                "Cell volumes are required for molecule_rate_per_volume verification."
+            )
+        data *= cell_volumes_m3[chunk_slices[1:]][None, :, :, :]
+        data *= molar_mass
+        return
+
+    raise VerificationError(f"Unsupported inventory_emission_unit '{unit_mode}'.")
 
 
 def _structural_validation(ds: xr.Dataset) -> list[str]:
@@ -370,8 +427,15 @@ def _structural_validation(ds: xr.Dataset) -> list[str]:
     return issues
 
 
-def _data_sanity_checks(ds: xr.Dataset) -> list[str]:
+def _scan_species_data(
+    ds: xr.Dataset,
+    ds_raw: xr.Dataset,
+    netcdf_path: str | Path,
+) -> tuple[list[str], list[str], dict[str, float], dict[str, np.ndarray]]:
     issues: list[str] = []
+    mass_lines = ["Total emissions by species (kg):"]
+    totals: dict[str, float] = {}
+    per_timestep: dict[str, np.ndarray] = {}
 
     for coord_name in [
         NETCDF_TIME_AXIS_NAME,
@@ -405,18 +469,87 @@ def _data_sanity_checks(ds: xr.Dataset) -> list[str]:
         elif np.any(time_bnds[:, 1] <= time_bnds[:, 0]):
             issues.append("time_bnds contains non-positive timestep durations.")
 
-    for var_name in _species_variables(ds):
-        data = np.asarray(ds[var_name].values, dtype=float)
-        if np.isnan(data).any():
-            issues.append(f"Species variable '{var_name}' contains NaN values.")
-        if np.isinf(data).any():
-            issues.append(f"Species variable '{var_name}' contains infinite values.")
-        if (data < 0).any():
-            issues.append(f"Species variable '{var_name}' contains negative values.")
-        if np.allclose(data, 0.0, rtol=0.0, atol=0.0):
-            issues.append(f"Species variable '{var_name}' contains only zeros.")
+    unit_mode = str(ds.attrs.get("inventory_emission_unit", "")).strip()
+    durations_seconds = (
+        _time_bounds_seconds(ds_raw)
+        if unit_mode in {"molecule_rate", "molecule_rate_per_volume"}
+        else None
+    )
+    cell_volumes_m3 = (
+        _cell_volumes_from_metadata(ds)
+        if unit_mode == "molecule_rate_per_volume"
+        else None
+    )
 
-    return issues
+    grand_total_kg = 0.0
+    with NetCDFDataset(str(netcdf_path), mode="r") as nc:
+        for var_name in _species_variables(ds):
+            variable = nc.variables[var_name]
+            variable.set_var_chunk_cache(
+                size=VERIFICATION_NETCDF_CACHE_BYTES,
+                nelems=257,
+                preemption=0.75,
+            )
+            species_name = _species_name_from_var(var_name)
+            is_total = species_name == "Total"
+
+            if not is_total and variable.ndim != 4:
+                raise VerificationError(
+                    f"Variable '{var_name}' is expected to have 4 dimensions "
+                    "(time, lev, lat, lon)."
+                )
+
+            has_nan = False
+            has_inf = False
+            has_negative = False
+            has_nonzero = False
+            timestep_totals = (
+                np.zeros(variable.shape[0], dtype=np.float64)
+                if not is_total
+                else None
+            )
+
+            for chunk_slices in _iter_chunk_slices(variable.shape):
+                data = _read_netcdf_chunk(variable, chunk_slices)
+                has_nan = has_nan or bool(np.isnan(data).any())
+                has_inf = has_inf or bool(np.isinf(data).any())
+                has_negative = has_negative or bool((data < 0).any())
+                has_nonzero = has_nonzero or bool((data != 0).any())
+
+                if is_total:
+                    continue
+
+                _convert_chunk_to_mass_kg_in_place(
+                    data,
+                    unit_mode=unit_mode,
+                    species_name=species_name,
+                    chunk_slices=chunk_slices,
+                    durations_seconds=durations_seconds,
+                    cell_volumes_m3=cell_volumes_m3,
+                )
+                chunk_totals = data.sum(axis=(1, 2, 3))
+                timestep_totals[chunk_slices[0]] += chunk_totals
+
+            if has_nan:
+                issues.append(f"Species variable '{var_name}' contains NaN values.")
+            if has_inf:
+                issues.append(f"Species variable '{var_name}' contains infinite values.")
+            if has_negative:
+                issues.append(f"Species variable '{var_name}' contains negative values.")
+            if not has_nonzero:
+                issues.append(f"Species variable '{var_name}' contains only zeros.")
+
+            if is_total:
+                continue
+
+            total = float(np.sum(timestep_totals))
+            totals[species_name] = total
+            per_timestep[species_name] = timestep_totals
+            grand_total_kg += total
+            mass_lines.append(f"  {species_name}: {total:.12g}")
+
+    mass_lines.append(f"  TOTAL_ALL_SPECIES: {grand_total_kg:.12g}")
+    return issues, mass_lines, totals, per_timestep
 
 
 def _metadata_cross_checks(
@@ -574,30 +707,6 @@ def _summarize_dimensions(ds: xr.Dataset) -> list[str]:
     ]
 
 
-def _mass_summaries(
-    ds: xr.Dataset,
-    ds_raw: xr.Dataset,
-) -> tuple[list[str], dict[str, float], dict[str, np.ndarray]]:
-    lines = ["Total emissions by species (kg):"]
-    totals: dict[str, float] = {}
-    per_timestep: dict[str, np.ndarray] = {}
-
-    grand_total_kg = 0.0
-    for var_name in _species_variables(ds):
-        species_name = _species_name_from_var(var_name)
-        if species_name == "Total":
-            continue
-        _, timestep_totals = _convert_var_to_mass_kg(ds, ds_raw, var_name)
-        total = float(np.sum(timestep_totals))
-        totals[species_name] = total
-        per_timestep[species_name] = timestep_totals
-        grand_total_kg += total
-        lines.append(f"  {species_name}: {total:.12g}")
-
-    lines.append(f"  TOTAL_ALL_SPECIES: {grand_total_kg:.12g}")
-    return lines, totals, per_timestep
-
-
 def _per_timestep_lines(
     ds_raw: xr.Dataset,
     per_timestep: dict[str, np.ndarray],
@@ -653,17 +762,21 @@ def _issues_block(title: str, issues: list[str]) -> list[str]:
 
 def build_verification_report(netcdf_source: str | Path) -> tuple[str, Path]:
     resource = InventoryResource(netcdf_source)
+    previous_chunk_cache = get_netcdf_chunk_cache()
 
     try:
+        set_netcdf_chunk_cache(
+            size=VERIFICATION_NETCDF_CACHE_BYTES,
+            nelems=257,
+            preemption=0.75,
+        )
         with xr.open_dataset(
             resource.local_path,
             decode_times=False,
             mask_and_scale=True,
-        ) as ds_raw, xr.open_dataset(
-            resource.local_path,
-            decode_times=False,
-            mask_and_scale=True,
+            cache=False,
         ) as ds:
+            ds_raw = ds
             report_lines: list[str] = []
             report_lines.append(f"Verification target: {resource.label}")
             report_lines.extend(_summarize_dimensions(ds))
@@ -672,8 +785,12 @@ def build_verification_report(netcdf_source: str | Path) -> tuple[str, Path]:
             report_lines.append("")
 
             structural_issues = _structural_validation(ds)
-            sanity_issues = _data_sanity_checks(ds)
             metadata_issues = _metadata_cross_checks(
+                ds,
+                ds_raw,
+                netcdf_path=resource.local_path,
+            )
+            sanity_issues, mass_lines, _totals, per_timestep = _scan_species_data(
                 ds,
                 ds_raw,
                 netcdf_path=resource.local_path,
@@ -686,7 +803,6 @@ def build_verification_report(netcdf_source: str | Path) -> tuple[str, Path]:
             report_lines.extend(_issues_block("Metadata vs data cross-check:", metadata_issues))
             report_lines.append("")
 
-            mass_lines, _totals, per_timestep = _mass_summaries(ds, ds_raw)
             report_lines.extend(mass_lines)
             report_lines.append("")
             report_lines.extend(
@@ -702,6 +818,11 @@ def build_verification_report(netcdf_source: str | Path) -> tuple[str, Path]:
         log_path.write_text(report_text, encoding="utf-8")
         return report_text, log_path
     finally:
+        set_netcdf_chunk_cache(
+            size=previous_chunk_cache[0],
+            nelems=previous_chunk_cache[1],
+            preemption=previous_chunk_cache[2],
+        )
         resource.cleanup()
 
 
