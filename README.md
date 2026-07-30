@@ -242,6 +242,16 @@ inventories on memory-constrained systems.
 Please cite the software using [`CITATION.cff`](CITATION.cff) and cite the IGEL
 2024 data publication separately when using the published dataset.
 
+Herberhold, M. (2026). IGEL Custom Inventory Generator (Version 1.0) 
+[Computer software]. Zenodo. https://doi.org/10.5281/zenodo.21700961
+
+Herberhold, M., Wilken, J., Callsen, S., Nützel, M., Yamashita, H., Sippel,
+M., & Silvestri, S. (2026). *Inventory of Global Emissions by Launchers for
+2024 (IGEL 2024)* [Data set]. Zenodo. [10.5281/zenodo.21667787]
+
+Herberhold, M., Wilken, J., Callsen, S., Nützel, M., Yamashita, H., Sippel,
+M., & Silvestri, S. *Inventory of global emissions by launchers for 2024*.
+
 ## License
 
 Copyright © 2026 Moritz Herberhold.
