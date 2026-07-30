@@ -156,7 +156,7 @@ The generator performs these steps:
 1. Validate the configuration and input schemas.
 2. Re-bin propellant-use profiles to the requested grid.
 3. Calculate primary species emissions from engine mass fractions.
-4. Apply optional CSVEM post-combustion equations.
+4. Apply optional post-combustion equations.
 5. Select launches for each timestep and combine their profiles.
 6. Apply configured domain handling.
 7. Convert spatial bins to midpoint coordinates.
@@ -181,8 +181,7 @@ References:
 - Herberhold, M., Wilken, J., Callsen, S., Nützel, M., Yamashita, H., Sippel,
   M., & Silvestri, S. (2026). *Inventory of Global Emissions by Launchers for
   2024 (IGEL 2024)* [Data set]. Zenodo. [10.5281/zenodo.21667787]
-
-> Herberhold, M., Wilken, J., Callsen, S., Nützel, M., Yamashita, H., Sippel,
+- Herberhold, M., Wilken, J., Callsen, S., Nützel, M., Yamashita, H., Sippel,
   M., & Silvestri, S. *Inventory of global emissions by launchers for 2024*.
   [Currently in review]
 
@@ -230,24 +229,12 @@ scanned in bounded chunks so verification also works with production-scale
 inventories on memory-constrained systems.
 
 
-## Testing
-
-Run the regression test suite:
-
-```bash
-pytest -q
-```
-
-The GitHub Actions workflow builds the package and runs the same suite on the
-supported Python versions.
-
 ## Limitations
 
 - Runtime and memory use increase with grid resolution, number of species, and
   number of timesteps.
 - NetCDF writing is single-threaded.
 - Pressure conversion is limited to the USSA1976 range up to 1000 km.
-- CSVEM coefficients are empirical and uncertain.
 
 
 ## Citation
