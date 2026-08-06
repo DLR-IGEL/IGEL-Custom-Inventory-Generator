@@ -254,7 +254,7 @@ M., & Silvestri, S. *Inventory of global emissions by launchers for 2024*.
 
 ## License
 
-Copyright © 2026 Moritz Herberhold.
+Copyright © 2026 DLR.
 
 The software is distributed under the [MIT License](LICENSE).
 
