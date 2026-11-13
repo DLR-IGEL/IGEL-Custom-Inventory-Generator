@@ -486,6 +486,7 @@ def _build_netcdf_encoding(ds: xr.Dataset) -> dict[str, dict[str, Any]]:
             "zlib": True,
             "complevel": NETCDF_COMPRESSION_LEVEL,
             "shuffle": True,
+            "_FillValue": None,
         }
 
     return encoding
